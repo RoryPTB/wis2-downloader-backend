@@ -1,0 +1,4 @@
+flask
+paho-mqtt
+urllib3
+pyinstaller
