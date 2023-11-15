@@ -5,7 +5,7 @@ a = Analysis(
     ['app.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('./subscriptions.json', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

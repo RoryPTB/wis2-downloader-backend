@@ -28,6 +28,14 @@ To bundle more files with the executable, use the format:
 ('path/to/file', 'destination/directory')
 ``
 
+Finally, run PyInstaller again with the modified spec file:
+
+``
+pyinstaller app.spec
+``
+
+The executable file created in the `dist` folder is now ready to be used with `subscriptions.json`.
+
 ## Usage of Python file
 
 Install dependencies
