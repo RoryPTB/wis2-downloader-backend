@@ -12,121 +12,9 @@ import urllib3
 from urllib.parse import urlsplit
 import argparse
 
-# Parse system arguments
-parser = argparse.ArgumentParser(
-    description="WIS2 Downloader Backend Configuration")
-parser.add_argument(
-    "--broker", help="The global broker URL")
-parser.add_argument(
-    "--download_dir", default=None, help="Optional download directory")
-args = parser.parse_args()
-
-# Determine base path of app - whether it's in development mode or
-# a packaged executable
-# PyInstaller creates a temporary folder and stores path in _MEIPASS
-base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-
-# From the base path get the path of the subscriptions json file
-subscriptions_path = os.path.join(base_path, 'subscriptions.json') 
-
-# Load subs
-with open(subscriptions_path) as fh:
-    subs = json.load(fh)
-
 # LOGGER
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
-
-
-# Downloader
-urlQ = queue.Queue()
-http = urllib3.PoolManager()
-def downloadWorker():
-    while True:
-        LOGGER.debug(f"Messages in queue: {urlQ.qsize()}")
-        job = urlQ.get()
-        output_dir = subs.get(job['topic'])
-        if output_dir == None:
-            output_dir = "downloads"
-        output_dir = Path(output_dir)
-        # get data ID, used to set directory to write to
-        dataid = Path(job['payload']['properties']['data_id'])
-        # we need to replace colons in output path
-        dataid = Path(str(dataid).replace(":",""))
-        output_path = Path(output_dir, dataid)
-        # create directory
-        output_path.parent.mkdir(exist_ok=True, parents=True)
-        LOGGER.info(output_path.parent)
-        # find canonical in links
-        for link in job['payload']['links']:
-            if link['rel'] == "canonical":
-                path = urlsplit(link['href']).path
-                filename = os.path.basename(path)
-                LOGGER.debug(f"{filename}")
-                # check if already in output directory, if not download
-                if not output_path.is_file():
-                    LOGGER.debug(f"Downloading {filename}")
-                    try:
-                        response = http.request("GET", link['href'])
-                    except Exception as e:
-                        LOGGER.error(f"Error downloading {link['href']}")
-                        LOGGER.error(e)
-                    try:
-                        output_path.write_bytes(response.data)
-                    except Exception as e:
-                        LOGGER.error(f"Error saving to disk: {args.download_dir}/{filename}") # noqa
-                        LOGGER.error(e)
-
-        urlQ.task_done()
-
-
-# Function to start the download thread
-def start_download_thread():
-    downloadThread = threading.Thread(target=downloadWorker, daemon=True)
-    downloadThread.start()
-
-
-# MQTT stuff
-def on_connect(client, userdata, flags, rc):  # subs managed by sub-manager
-    LOGGER.debug("connected")
-
-def on_message(client, userdata, msg):
-    LOGGER.debug("message received")
-    # create new job and add to queue
-    job = {
-        'topic': msg.topic,
-        'payload': json.loads(msg.payload)
-    }
-    urlQ.put(job)
-
-
-def on_subscribe(client, userdata, mid, granted_qos):
-    LOGGER.debug(("on subscribe"))
-
-
-broker = args.broker
-port = 443
-pwd = "everyone"
-uid = "everyone"
-protocol = "websockets"
-
-LOGGER.debug("Initialising client")
-client = mqtt.Client(transport=protocol)
-client.tls_set(ca_certs=None, certfile=None, keyfile=None,
-               cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS,
-               ciphers=None)
-client.username_pw_set(uid, pwd)
-client.on_connect = on_connect
-client.on_message = on_message
-client.on_subscribe = on_subscribe
-LOGGER.debug("Connecting")
-result = client.connect(host=broker, port=port)
-LOGGER.debug(result)
-mqtt_thread = threading.Thread(target=client.loop_forever, daemon=True).start()
-
-for sub in subs:
-    client.subscribe(sub)
-
 
 def create_app(args, test_config=None):
     LOGGER.debug("Creating app")
@@ -195,3 +83,124 @@ def create_app(args, test_config=None):
         return subs
 
     return app
+
+def downloadWorker():
+    while True:
+        LOGGER.debug(f"Messages in queue: {urlQ.qsize()}")
+        job = urlQ.get()
+        output_dir = subs.get(job['topic'])
+        if output_dir == None:
+            output_dir = "downloads"
+        output_dir = Path(output_dir)
+        # get data ID, used to set directory to write to
+        dataid = Path(job['payload']['properties']['data_id'])
+        # we need to replace colons in output path
+        dataid = Path(str(dataid).replace(":",""))
+        output_path = Path(output_dir, dataid)
+        # create directory
+        output_path.parent.mkdir(exist_ok=True, parents=True)
+        LOGGER.info(output_path.parent)
+        # find canonical in links
+        for link in job['payload']['links']:
+            if link['rel'] == "canonical":
+                path = urlsplit(link['href']).path
+                filename = os.path.basename(path)
+                LOGGER.debug(f"{filename}")
+                # check if already in output directory, if not download
+                if not output_path.is_file():
+                    LOGGER.debug(f"Downloading {filename}")
+                    try:
+                        response = http.request("GET", link['href'])
+                    except Exception as e:
+                        LOGGER.error(f"Error downloading {link['href']}")
+                        LOGGER.error(e)
+                    try:
+                        output_path.write_bytes(response.data)
+                    except Exception as e:
+                        LOGGER.error(f"Error saving to disk: {args.download_dir}/{filename}") # noqa
+                        LOGGER.error(e)
+
+        urlQ.task_done()
+
+
+# Function to start the download thread
+def start_download_thread():
+    downloadThread = threading.Thread(target=downloadWorker, daemon=True)
+    downloadThread.start()
+
+
+# MQTT stuff
+def on_connect(client, userdata, flags, rc):  # subs managed by sub-manager
+    LOGGER.debug("connected")
+
+
+def on_message(client, userdata, msg):
+    LOGGER.debug("message received")
+    # create new job and add to queue
+    job = {
+        'topic': msg.topic,
+        'payload': json.loads(msg.payload)
+    }
+    urlQ.put(job)
+
+
+def on_subscribe(client, userdata, mid, granted_qos):
+    LOGGER.debug(("on subscribe"))
+
+
+def main():
+    # Parse system arguments
+    parser = argparse.ArgumentParser(
+        description="WIS2 Downloader Backend Configuration")
+    parser.add_argument(
+        "--broker", help="The global broker URL")
+    parser.add_argument(
+        "--download_dir", default=None, help="Optional download directory")
+    args = parser.parse_args()
+
+    # Determine base path of app - whether it's in development mode or
+    # a packaged executable
+    # PyInstaller creates a temporary folder and stores path in _MEIPASS
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+
+    # From the base path get the path of the subscriptions json file
+    subscriptions_path = os.path.join(base_path, 'subscriptions.json') 
+
+    # Load subs
+    with open(subscriptions_path) as fh:
+        subs = json.load(fh)
+
+    # Downloader
+    urlQ = queue.Queue()
+    http = urllib3.PoolManager()
+
+    broker = args.broker
+    port = 443
+    pwd = "everyone"
+    uid = "everyone"
+    protocol = "websockets"
+
+    LOGGER.debug("Initialising client")
+    client = mqtt.Client(transport=protocol)
+    client.tls_set(ca_certs=None, certfile=None, keyfile=None,
+                cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS,
+                ciphers=None)
+    client.username_pw_set(uid, pwd)
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.on_subscribe = on_subscribe
+    LOGGER.debug("Connecting")
+    result = client.connect(host=broker, port=port)
+    LOGGER.debug(result)
+    mqtt_thread = threading.Thread(target=client.loop_forever, daemon=True).start()
+
+    for sub in subs:
+        client.subscribe(sub)
+
+    # Create the app
+    app = create_app(args)
+    app.run(debug=True)
+
+
+if __name__ == '__main__':
+    main()
