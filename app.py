@@ -13,10 +13,18 @@ from urllib.parse import urlsplit
 import argparse
 
 # LOGGER
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    level=logging.DEBUG,
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
 LOGGER = logging.getLogger(__name__)
 
-def create_app(args, test_config=None):
+# Global variables
+urlQ = queue.Queue()
+http = urllib3.PoolManager()
+
+def create_app(args, subs, test_config=None):
     LOGGER.debug("Creating app")
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
@@ -26,15 +34,15 @@ def create_app(args, test_config=None):
     )
 
     # If the download argument is given, download data there
-    if args.download_dir:
+    if args.download_dir is not None:
         # Check if the directory exists and is writable
         if (os.path.exists(args.download_dir) and
                 os.access(args.download_dir, os.W_OK)):
-            start_download_thread()
+            start_download_thread(subs)
         else:
             raise FileNotFoundError("Specified download directory does not exist or is not writable.") # noqa
     else:
-        LOGGER.error("Download directory not specified. Data will not be downloaded.")
+        LOGGER.info("Download directory not specified. Data will not be downloaded.")
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
@@ -84,7 +92,12 @@ def create_app(args, test_config=None):
 
     return app
 
-def downloadWorker():
+
+def downloadWorker(subs):
+    # Declare global variables
+    global urlQ
+    global http
+
     while True:
         LOGGER.debug(f"Messages in queue: {urlQ.qsize()}")
         job = urlQ.get()
@@ -124,8 +137,8 @@ def downloadWorker():
 
 
 # Function to start the download thread
-def start_download_thread():
-    downloadThread = threading.Thread(target=downloadWorker, daemon=True)
+def start_download_thread(subs):
+    downloadThread = threading.Thread(target=downloadWorker(subs), daemon=True)
     downloadThread.start()
 
 
@@ -135,6 +148,9 @@ def on_connect(client, userdata, flags, rc):  # subs managed by sub-manager
 
 
 def on_message(client, userdata, msg):
+    # Declare urlQ as global
+    global urlQ
+
     LOGGER.debug("message received")
     # create new job and add to queue
     job = {
@@ -158,21 +174,27 @@ def main():
         "--download_dir", default=None, help="Optional download directory")
     args = parser.parse_args()
 
-    # Determine base path of app - whether it's in development mode or
-    # a packaged executable
-    # PyInstaller creates a temporary folder and stores path in _MEIPASS
-    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    # Determine base path of application
+    if getattr(sys, 'frozen', False):
+        # If the application is run as a bundled executable,
+        # the sys.executable path will be the path to
+        # the application executable
+        application_path = os.path.dirname(sys.executable)
+    else:
+        # If it's run as a normal Python script, the sys.executable 
+        # path will be the path to the Python interpreter
+        application_path = os.path.dirname(os.path.realpath(__file__))
 
     # From the base path get the path of the subscriptions json file
-    subscriptions_path = os.path.join(base_path, 'subscriptions.json') 
+    subscriptions_path = os.path.join(application_path, 'subscriptions.json')
+    
+    print("Subscriptions path", subscriptions_path)
 
     # Load subs
     with open(subscriptions_path) as fh:
         subs = json.load(fh)
-
-    # Downloader
-    urlQ = queue.Queue()
-    http = urllib3.PoolManager()
+        
+    print("Subs: ", subs)
 
     broker = args.broker
     port = 443
@@ -198,7 +220,7 @@ def main():
         client.subscribe(sub)
 
     # Create the app
-    app = create_app(args)
+    app = create_app(args, subs)
     app.run(debug=True)
 
 

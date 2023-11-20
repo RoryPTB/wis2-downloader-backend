@@ -14,27 +14,16 @@ Then run
 pyinstaller -F app.py
 ``
 
-This will create the executable, but without `subscriptions.json` bundled. To bundle this file with the executable, modify the `datas` attribute in `app.spec` in the following way:
+This will create the executable ready to be used with `subscriptions.json` in the same directory.
 
-``
-datas=[('./subscriptions.json', '.')],
-``
+## How to use frozen executable
 
-Where `.` indicates that `subscriptions.json` will share the same directory as `app.exe`.
+There are two arguments:
 
-To bundle more files with the executable, use the format:
+- `--broker` (required): The URL to the global broker
+- `--download_dir` (optional): The local directory where the data will be downloaded to
 
-``
-('path/to/file', 'destination/directory')
-``
-
-Finally, run PyInstaller again with the modified spec file:
-
-``
-pyinstaller app.spec
-``
-
-The executable file created in the `dist` folder is now ready to be used with `subscriptions.json`.
+NOTE: Currently the data is not downloading to the chosen directory, rather to a locally created folder `./downloads`. This will be fixed soon.
 
 ## Usage of Python file
 
