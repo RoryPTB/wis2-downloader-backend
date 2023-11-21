@@ -38,7 +38,7 @@ def create_app(args, subs, test_config=None):
         # Check if the directory exists and is writable
         if (os.path.exists(args.download_dir) and
                 os.access(args.download_dir, os.W_OK)):
-            start_download_thread(subs)
+            start_download_thread(args, subs)
         else:
             raise FileNotFoundError("Specified download directory does not exist or is not writable.") # noqa
     else:
@@ -93,7 +93,7 @@ def create_app(args, subs, test_config=None):
     return app
 
 
-def downloadWorker(subs):
+def downloadWorker(args, subs):
     # Declare global variables
     global urlQ
     global http
@@ -102,8 +102,8 @@ def downloadWorker(subs):
         LOGGER.debug(f"Messages in queue: {urlQ.qsize()}")
         job = urlQ.get()
         output_dir = subs.get(job['topic'])
-        if output_dir == None:
-            output_dir = "downloads"
+        if output_dir is None:
+            output_dir = args.download_dir
         output_dir = Path(output_dir)
         # get data ID, used to set directory to write to
         dataid = Path(job['payload']['properties']['data_id'])
@@ -137,8 +137,9 @@ def downloadWorker(subs):
 
 
 # Function to start the download thread
-def start_download_thread(subs):
-    downloadThread = threading.Thread(target=downloadWorker(subs), daemon=True)
+def start_download_thread(args, subs):
+    downloadThread = threading.Thread(
+        target=downloadWorker(args, subs), daemon=True)
     downloadThread.start()
 
 

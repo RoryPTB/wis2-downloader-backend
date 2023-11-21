@@ -23,8 +23,6 @@ There are two arguments:
 - `--broker` (required): The URL to the global broker
 - `--download_dir` (optional): The local directory where the data will be downloaded to
 
-NOTE: Currently the data is not downloading to the chosen directory, rather to a locally created folder `./downloads`. This will be fixed soon.
-
 ## Usage of Python file
 
 Install dependencies
