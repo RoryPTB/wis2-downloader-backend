@@ -3,7 +3,7 @@
 
 a = Analysis(
     ['broker-backend.py'],
-    pathex=[],
+    pathex=['D:envLibsite-packages'],
     binaries=[],
     datas=[],
     hiddenimports=[],

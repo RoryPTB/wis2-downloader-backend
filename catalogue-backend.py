@@ -1,6 +1,8 @@
 import argparse
 import requests
 import json
+import os
+import sys
 
 # Replace with actual GDC API URL
 GDC_API_URL = "https://api.weather.gc.ca/collections/wis2-discovery-metadata/items"  # noqa
@@ -95,7 +97,22 @@ def main():
     if api_response:
         items = api_response.get('features', [])
         extracted_data = [extract_relevant_data(item) for item in items]
-        write_to_json('datasets.json', extracted_data)
+
+        # Determine base path of application
+        if getattr(sys, 'frozen', False):
+            # If the application is run as a bundled executable,
+            # the sys.executable path will be the path to
+            # the application executable
+            application_path = os.path.dirname(sys.executable)
+        else:
+            # If it's run as a normal Python script, the sys.executable
+            # path will be the path to the Python interpreter
+            application_path = os.path.dirname(os.path.realpath(__file__))
+
+        # From the base path get the path to write the broker JSON file
+        output_path = os.path.join(application_path, 'datasets.json')
+
+        write_to_json(output_path, extracted_data)
 
 
 if __name__ == "__main__":

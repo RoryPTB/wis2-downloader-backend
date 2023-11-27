@@ -1,5 +1,7 @@
 import requests
 import json
+import os
+import sys
 from datetime import datetime
 
 # Replace with actual GDC API URL
@@ -65,7 +67,23 @@ def main():
         items = api_response.get('features', [])
         item = items[0] # Only need the first item to get broker URLs
         extracted_brokers = extract_latest_brokers(item)
-        write_to_json('brokers.json', extracted_brokers)
+
+        # Determine base path of application
+        if getattr(sys, 'frozen', False):
+            # If the application is run as a bundled executable,
+            # the sys.executable path will be the path to
+            # the application executable
+            application_path = os.path.dirname(sys.executable)
+        else:
+            # If it's run as a normal Python script, the sys.executable
+            # path will be the path to the Python interpreter
+            application_path = os.path.dirname(os.path.realpath(__file__))
+
+        # From the base path get the path to write the broker JSON file
+        output_path = os.path.join(application_path, 'brokers.json')
+
+        # Write the file
+        write_to_json(output_path, extracted_brokers)
 
 
 if __name__ == "__main__":
