@@ -188,8 +188,6 @@ def main():
 
     # From the base path get the path of the subscriptions json file
     subscriptions_path = os.path.join(application_path, 'subscriptions.json')
-    
-    print("Subscriptions path", subscriptions_path)
 
     # Load subs
     with open(subscriptions_path) as fh:
