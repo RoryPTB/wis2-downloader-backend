@@ -1,6 +1,6 @@
 # wis2-downloader-backend
 
-## How to create frozen executable
+## How to create frozen executables
 
 Install dependencies
 
@@ -11,17 +11,32 @@ pip install -r requirements.txt
 Then run
 
 ``
-pyinstaller -F app.py
+pyinstaller -F --paths=D:\env\Lib\site-packages app.py
 ``
 
 This will create the executable ready to be used with `subscriptions.json` in the same directory.
 
-## How to use frozen executable
+## How to use frozen executables
 
-There are two arguments:
+### Subscription backend
+For `subscribe-backend.exe` there are two arguments:
 
 - `--broker` (required): The URL to the global broker
 - `--download_dir` (optional): The local directory where the data will be downloaded to
+
+### Catalogue backend
+For `catalogue-backend.exe` there are three arguments:
+
+- `--url` (optional): The URL to the global discovery catalogue (defaults to that of Canada)
+- `--query` (optional): The search term used to query the catalogue (e.g. Synop)
+- `--country` (optional): The country code used to filter the catalogue by datasets originating within the bounding box associated with that country.
+
+Running this executable will create a JSON file `datasets.json`, which contains the (meta)datasets response from the global discovery catalogue.
+
+### Broker synchronisation backend
+For `broker-backend.exe` there are no arguments.
+
+Running this executable will create a JSON file `brokers.json`, which contains the broker titles, URLs, as well as the datetime of the synchronisation.
 
 ## Usage of Python file
 

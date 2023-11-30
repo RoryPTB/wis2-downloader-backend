@@ -35,13 +35,19 @@ def extract_latest_brokers(item):
     titles = []
 
     # In the links where the rel is 'items', the href starts with 'mqtt',
-    # and the channel starts with 'cache', the global brokers can be found
+    # and the channel starts with 'cache', the global broker URLs can be found
     # in the the href after the 'mqtt://every.everyone@' part and before
-    # the ':8883' part
+    # the ':8883' part, and the global broker titles can be found
+    # in the title after the 'Notifications from ' part
     for link in item.get('links', []):
         if link.get('rel') == 'items' and link.get('href').startswith('mqtt') and link.get('channel').startswith('cache'): # noqa
             broker = link.get('href').split('@')[1].split(':')[0]
-            title = link.get('title').split('Notifications from ')[1]
+            if link.get('title') is not None:
+                # Get the title of the organisation
+                title = link.get('title').split('Notifications from ')[1]
+            else:
+                # If no title, we will use the href in the frontend
+                title = ""
             brokers.append(broker)
             titles.append(title)
 

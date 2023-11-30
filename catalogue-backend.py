@@ -6,6 +6,39 @@ import sys
 
 CANADA_GDC_API_URL = "https://api.weather.gc.ca/collections/wis2-discovery-metadata/items"  # noqa
 
+COUNTRY_METADATA_URL = "https://raw.githubusercontent.com/wmo-im/wis2box/main/config-templates/countries.json"  # noqa
+
+
+def fetch_countries_metadata():
+    """
+    Fetch the country metadata from the wis2box repository.
+
+    :return: JSON data from the repository.
+    """
+    try:
+        response = requests.get(COUNTRY_METADATA_URL)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"Error fetching country metadata: {e}")
+        return None
+
+
+def get_bbox_for_country(countries_metadata, country_code):
+    """
+    Get the bounding box for a country from the country metadata.
+
+    :param countries_metadata: Country metadata from the wis2box repository.
+    :param country_code: The country code to get the bounding box for.
+    :return: Bounding box coordinates as a list [lat1, lon1, lat2, lon2].
+    """
+    country_info = countries_metadata["countries"].get(country_code.lower())
+    if country_info is not None:
+        bbox = country_info.get('bbox', {})
+        return [bbox.get('minx'), bbox.get('miny'), bbox.get('maxx'), bbox.get('maxy')]  # noqa
+    else:
+        return None
+
 
 def fetch_data(url, bbox=None, query=None):
     """
@@ -39,14 +72,13 @@ def extract_relevant_data(item):
     :return: Extracted data as a dictionary.
     """
     properties = item.get('properties', {})
-    topic_hierarchy = properties.get('wmo:topicHierarchy')
 
-    # Sometimes, the topic hierarchy is not in the properties, but in the
-    # links whre the rel is 'data'
+    # The topic hierarchy is found in the 'channel' property in 'links
+    # where the rel is 'items' and the href starts with 'mqtt'
+    topic_hierarchy = None
     for link in item.get('links', []):
-        if link.get('rel') == 'data' and 'wmo:topic' in link:
-            topic_hierarchy = link['wmo:topic']
-            break
+        if link.get('rel') == 'items' and link.get('href').startswith('mqtt'):
+            topic_hierarchy = link.get('channel')
 
     # Get the centre id from the identifier, depending on the structure
     # of the identifier
@@ -88,13 +120,27 @@ def write_to_json(filename, data):
 
 def main():
     parser = argparse.ArgumentParser(description='GDC API Data Fetcher')
-    parser.add_argument('--url', type=str, default=CANADA_GDC_API_URL,)
-    parser.add_argument('--bbox', nargs=4, type=float,
-                        help='Bounding box [lat1, lon1, lat2, lon2]')
-    parser.add_argument('--query', type=str, help='Text query')
+    parser.add_argument('--url', type=str, default=CANADA_GDC_API_URL,
+                        help='URL of the GDC API')
+    parser.add_argument('--country', type=str,
+                        help='The country code to fetch data for')
+    parser.add_argument('--query', type=str, help='Text search')
     args = parser.parse_args()
 
-    api_response = fetch_data(url=args.url, bbox=args.bbox, query=args.query)
+    # Get the bounding box for the country
+    bbox_array = None
+    if args.country:
+        # Load country data
+        countries_metadata = fetch_countries_metadata()
+
+        if not countries_metadata:
+            print("Error fetching country metadata")
+            return
+
+        # Get the bbox data for the specified country
+        bbox_array = get_bbox_for_country(countries_metadata, args.country)
+
+    api_response = fetch_data(url=args.url, bbox=bbox_array, query=args.query)
     if api_response:
         items = api_response.get('features', [])
         extracted_data = [extract_relevant_data(item) for item in items]
