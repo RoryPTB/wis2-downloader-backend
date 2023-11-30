@@ -68,8 +68,8 @@ def extract_relevant_data(item):
         "id": properties.get('identifier'),
         "center_id": centre_id,
         "title": properties.get('title'),
-        "topic_hierarchy": topic_hierarchy,
         "creation_date": properties.get('created'),
+        "topic_hierarchy": topic_hierarchy,
         "data_policy": properties.get('wmo:dataPolicy')
     }
 

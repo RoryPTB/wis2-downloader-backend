@@ -1,4 +1,5 @@
 .env
+.vscode
 __pycache__
 downloads
 instance
@@ -7,3 +8,4 @@ build
 dist/subscriptions.json
 datasets.json
 brokers.json
+*.spec

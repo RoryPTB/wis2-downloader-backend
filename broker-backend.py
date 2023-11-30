@@ -30,21 +30,25 @@ def extract_latest_brokers(item):
     :param item: Single item from the API response.
     :return: Extracted data as a dictionary.
     """
-    # Initialise the brokers array
+    # Initialise the brokers and titles array
     brokers = []
+    titles = []
 
     # In the links where the rel is 'items', the href starts with 'mqtt',
     # and the channel starts with 'cache', the global brokers can be found
     # in the the href after the 'mqtt://every.everyone@' part and before
     # the ':8883' part
     for link in item.get('links', []):
-        if link.get('rel') == 'items' and link.get('href').startswith('mqtt') and link.get('channel').startswith('cache'):
+        if link.get('rel') == 'items' and link.get('href').startswith('mqtt') and link.get('channel').startswith('cache'): # noqa
             broker = link.get('href').split('@')[1].split(':')[0]
+            title = link.get('title').split('Notifications from ')[1]
             brokers.append(broker)
+            titles.append(title)
 
     # Return the brokers and the datetime of the synchronisation
     return {
         "brokers": brokers,
+        "titles": titles,
         "sync_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
 
