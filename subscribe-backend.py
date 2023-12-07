@@ -24,7 +24,7 @@ LOGGER = logging.getLogger(__name__)
 urlQ = queue.Queue()
 http = urllib3.PoolManager()
 
-def create_app(args, subs, test_config=None):
+def create_app(args, subs, client, test_config=None):
     LOGGER.debug("Creating app")
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
@@ -219,7 +219,7 @@ def main():
 
     # Create the app
     try:
-        app = create_app(args, subs)
+        app = create_app(args, subs, client)
     except Expection as e:
         LOGGER.error("Error starting Flask app:", e)
     app.run(debug=True)
