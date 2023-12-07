@@ -139,7 +139,7 @@ def downloadWorker(args, subs):
 # Function to start the download thread
 def start_download_thread(args, subs):
     downloadThread = threading.Thread(
-        target=downloadWorker(args, subs), daemon=True)
+        target=downloadWorker, args=(args, subs), daemon=True)
     downloadThread.start()
 
 
@@ -192,7 +192,6 @@ def main():
     # Load subs
     with open(subscriptions_path) as fh:
         subs = json.load(fh)
-        
     print("Subs: ", subs)
 
     broker = args.broker
@@ -219,7 +218,10 @@ def main():
         client.subscribe(sub)
 
     # Create the app
-    app = create_app(args, subs)
+    try:
+        app = create_app(args, subs)
+    except Expection as e:
+        LOGGER.error("Error starting Flask app:", e)
     app.run(debug=True)
 
 
