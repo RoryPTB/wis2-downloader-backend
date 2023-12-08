@@ -5,7 +5,4 @@ downloads
 instance
 venv
 build
-dist/subscriptions.json
-datasets.json
-brokers.json
 *.spec

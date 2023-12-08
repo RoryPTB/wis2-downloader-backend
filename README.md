@@ -1,76 +1,77 @@
 # wis2-downloader-backend
 
-## How to create frozen executables
+## How to create a frozen executable
 
 Install dependencies
 
 ``
 pip install -r requirements.txt
+``
+
+Activate virtual environment
+
+``
+python -m venv venv
 ``
 
 Then run
 
 ``
-pyinstaller -F --paths=D:\env\Lib\site-packages app.py
+pyinstaller -F --paths=D:\env\Lib\site-packages subscribe-backend.py
 ``
 
-This will create the executable ready to be used with `subscriptions.json` in the same directory.
+This will create the executable ready to be used with a configuration file.
 
-## How to use frozen executables
+## How to use the subscribe backend executable
+### The configuration file
+To use the backend executable standalone, a configuration file must be made. This is a JSON file with three keys:
 
-### Subscription backend
-For `subscribe-backend.exe` there are two arguments:
+- `broker`: The URL of the global broker to be used in the subscription.
+- `topics`: A list of the topics to subscribe to.
+- `download_directory`: The directory where the latest data should be downloaded to.
 
-- `--broker` (required): The URL to the global broker
-- `--download_dir` (optional): The local directory where the data will be downloaded to
+Note:
+- The entries in this JSON file should be strings.
+- The download directory should be specified with forward slashes `/`.
 
-### Catalogue backend
-For `catalogue-backend.exe` there are three arguments:
-
-- `--url` (optional): The URL to the global discovery catalogue (defaults to that of Canada)
-- `--query` (optional): The search term used to query the catalogue (e.g. Synop)
-- `--country` (optional): The country code used to filter the catalogue by datasets originating within the bounding box associated with that country.
-
-Running this executable will create a JSON file `datasets.json`, which contains the (meta)datasets response from the global discovery catalogue.
-
-### Broker synchronisation backend
-For `broker-backend.exe` there are no arguments.
-
-Running this executable will create a JSON file `brokers.json`, which contains the broker titles, URLs, as well as the datetime of the synchronisation.
-
-## Usage of Python file
-
-Install dependencies
+### Launching the executable
+Now the configuration file has been made, the executable can be run using
 
 ``
-pip install -r requirements.txt
+./subscribe-backend.exe --config {MY_CONFIG_FILE}
 ``
 
-Run subscriber
+There is one argument for this executable:
+- `--config` (optional): The relative directory of the configuration file. By default, this is 'config.json' located in the same directory as the executable.
 
-``
-flask.exe --app .\app.py run
-``
+Once the executable is launched, it will continuously download the latest notifications from the specified topics. It will continue running until manually terminated or the computer is fully powered off.
 
-Example API call (HTTP GET) to add subscription
+## Managing topics of an on-going subscription
+
+To add, delete, or list subscriptions, we can make use of the Flask app created by the executable. That is, we can make an API call (HTTP GET) to do this.
+
+### Add topic to subscription
+For example, to add topic: `cache/a/wis2/+/+/data/core/weather/surface-based-observations/#`, we run
 
 ``
 curl http://localhost:5000/wis2/subscriptions/add?topic=cache/a/wis2/%2B/%2B/data/core/weather/surface-based-observations/%23
 ``
 
-Example API call (HTTP GET) to delete subscription
+### Delete topic from subscription
+For example, to delete topic: `cache/a/wis2/+/+/data/core/weather/surface-based-observations/#`, we run
 
 ``
 curl http://localhost:5000/wis2/subscriptions/delete?topic=cache/a/wis2/%2B/%2B/data/core/weather/surface-based-observations/%23
 ``
 
-Example API call (HTTP GET) to list subscriptions
+### List topics currently subscribed to
+This is done by running
 
 ``
 curl http://localhost:5000/wis2/subscriptions/list
 ``
 
-## Notes
+### Notes
 
 - Special symbols (e.g. +, #) in topics need to be URL encoded, + = %2B, # = %23.
 - Initial subscriptions can be stored in subscriptions.json

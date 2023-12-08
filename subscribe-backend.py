@@ -40,7 +40,7 @@ def create_app(broker, subs, download_dir, client, test_config=None):
     if (os.path.exists(download_dir) and
             os.access(download_dir, os.W_OK)):
         downloadThread = threading.Thread(
-            target=downloadWorker, daemon=True)
+            target=downloadWorker, args=(subs, download_dir), daemon=True)
         downloadThread.start()
     else:
         raise FileNotFoundError("Specified download directory does not exist or is not writable.")  # noqa
