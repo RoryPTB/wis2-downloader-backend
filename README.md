@@ -1,6 +1,6 @@
 # wis2-downloader-backend
 
-## How to create a frozen executable
+## How to create a frozen executable for Windows
 
 Install dependencies
 
@@ -21,6 +21,23 @@ pyinstaller -F --paths=D:\env\Lib\site-packages subscribe-backend.py
 ``
 
 This will create the executable ready to be used with a configuration file.
+
+## How to create a frozen executable for Linux
+
+Pyinstaller does not allow for cross-compiling (that is, compiling for an OS different to that which is used). So, the strategy is to run pyinstaller in a Docker container.
+
+Build the Docker image
+
+``
+docker build -t pyinstaller-image .
+``
+
+Then run the container to generate the Linux compatible executable
+
+``
+docker run -v /$(pwd)/dist:/app/dist pyinstaller-im
+age
+``
 
 ## How to use the subscribe backend executable
 ### The configuration file
